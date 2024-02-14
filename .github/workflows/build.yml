@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - uses: actions/checkout@v3
+
+      # Zip up the .pk4 files.
+      - name: Create drop-in .pk4 file
+        run: |
+          zip -r cc0-paintings-tapestries.pk4 *
+
+      # Make the .pk4s a Github 'artifact' so it can be downloaded if not doing a release
+      - name: Archive .pk4 file
+        uses: actions/upload-artifact@v4
+        with:
+          name: cc0-paintings-tapestries.pk4
+          path: cc0-paintings-tapestries.pk4
+
+      # Create an automated Github release
+      - uses: google-github-actions/release-please-action@v4
+        id: release
+        with:
+          release-type: simple
+      - name: Upload Release Artifact
+        if: ${{ steps.release.outputs.release_created }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          #
+          # rename the .pk4 with the release version, and upload it to the Github release
+          #
+          mv ./cc0-paintings-tapestries.pk4 ./cc0-paintings-tapestries-${{ steps.release.outputs.tag_name }}.pk4
+          gh release upload ${{ steps.release.outputs.tag_name }} ./cc0-paintings-tapestries-${{ steps.release.outputs.tag_name }}.pk4
+
